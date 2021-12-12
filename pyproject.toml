@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "symnet-cp"
+version = "0.0.1"
+description = "SymNet External Control Protocol implementation"
+authors = ["Christian Kohlstedde <christian@kohlsted.de>"]
+license = "MIT"
+readme = "README.md"
+
+keywords = ["Symetrix", "SymNet", "Solus"]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Natural Language :: German",
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+attrs = "~=21.2.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+black = "^21.12b0"
+pytest-aio = "^1.4.1"
+pytest-mockservers = "^0.6.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
