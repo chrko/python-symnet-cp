@@ -2,8 +2,13 @@ import asyncio
 import logging
 import re
 import typing
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import attr
+from prometheus_client import Counter
+
+UTC = ZoneInfo("UTC")
 
 
 class SymNetRawProtocolCallback:
@@ -26,7 +31,10 @@ class SymNetRawProtocolCallback:
 
         self.future = loop.create_future()
         self.timeout = float(timeout)
-        self.timeout_task = loop.create_task(self.timeouter())
+        self.timeout_task = asyncio.create_task(
+            self.timeouter(),
+            name=f"SymNetRawProtocolCallback-timeouter-{datetime.now(UTC)}",
+        )
 
     async def timeouter(self):
         await asyncio.sleep(self.timeout)
@@ -55,6 +63,18 @@ class SymNetRawProtocolCallback:
 
 
 class SymNetRawProtocol(asyncio.DatagramProtocol):
+    RECEIVED_DATAGRAMS = Counter(
+        "symnet_received_datagrams", "Received datagrams", ["host", "port"]
+    )
+    RECEIVED_DATA_LINES = Counter(
+        "symnet_received_data_lines",
+        "Received lines",
+        ["host", "port", "category"],
+    )
+    WRITTEN_DATAGRAMS = Counter(
+        "symnet_written_datagrams", "Written datagrams", ["host", "port"]
+    )
+
     def __init__(self, state_queue: asyncio.Queue):
         self.logger = logging.getLogger(self.__class__.__qualname__)
 
@@ -62,15 +82,20 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
         self.transport: typing.Optional[asyncio.DatagramTransport] = None
         self.callback_queue: list[SymNetRawProtocolCallback] = []
         self.state_queue = state_queue
+        self.address_labels = {"host": "UNKNOWN", "port": "UNKNOWN"}
 
     def connection_made(self, transport: asyncio.DatagramTransport):
         self.logger.debug("connection established")
         self.transport = transport
 
     def datagram_received(self, data: bytes, address):
+        address_labels = {"host": address[0], "port": address[1]}
+        self.address_labels = address_labels
+
         self.logger.debug(
             "a datagram was received - %d bytes, from %s", len(data), address
         )
+        self.RECEIVED_DATAGRAMS.labels(**address_labels).inc()
         data_str = data.decode()
         lines = data_str.split("\r")
         lines = [lines[i] for i in range(len(lines)) if len(lines[i]) > 0]
@@ -81,6 +106,9 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
             self.logger.debug("iterate over callback queue")
             for callback_obj in self.callback_queue:
                 if len(lines) == 1 and lines[0] == "NAK":
+                    self.RECEIVED_DATA_LINES.labels(
+                        category="callback_nak", **address_labels
+                    ).inc()
                     self.logger.debug(
                         "got only a NAK - forwarding to the first callback"
                     )
@@ -94,6 +122,9 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
                     )
                     m = re.match(callback_obj.regex, data_str)
                     if m is not None:
+                        self.RECEIVED_DATA_LINES.labels(
+                            category="callback_regex", **address_labels
+                        ).inc()
                         self.logger.debug(
                             "regex worked - deliver to callback and remove it"
                         )
@@ -101,6 +132,9 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
                         self.callback_queue.remove(callback_obj)
                         return
                 elif len(lines) == callback_obj.expected_lines:
+                    self.RECEIVED_DATA_LINES.labels(
+                        category="callback_expected_lines", **address_labels
+                    ).inc()
                     self.logger.debug(
                         "callback has no regex, but the expected line count equals to the received one"
                     )
@@ -110,9 +144,11 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
 
         if len(lines) == 1:
             if lines[0] == "NAK":
+                self.RECEIVED_DATA_LINES.labels(category="nak", **address_labels).inc()
                 self.logger.error("Uncaught NAK - this is probably a huge error")
                 return
             if lines[0] == "ACK":
+                self.RECEIVED_DATA_LINES.labels(category="ack", **address_labels).inc()
                 self.logger.debug(
                     "got an ACK, but no callbacks waiting for input - just ignore it"
                 )
@@ -124,9 +160,15 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
         for line in lines:
             m = re.match("^#([0-9]{5})=(-?[0-9]{4,5})$", line)
             if m is None:
+                self.RECEIVED_DATA_LINES.labels(
+                    category="error", **address_labels
+                ).inc()
                 self.logger.error("error in in the received line <%s>", line)
                 continue
 
+            self.RECEIVED_DATA_LINES.labels(
+                category="pushed_data", **address_labels
+            ).inc()
             asyncio.ensure_future(
                 self.state_queue.put(
                     SymNetRawControllerState(
@@ -135,6 +177,8 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
                     )
                 )
             )
+
+        self.RECEIVED_DATA_LINES.labels(category="error_fatal", **address_labels).inc()
 
     def error_received(self, exc):
         self.logger.error("Error received %s", exc)
@@ -146,6 +190,14 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
     def write(self, data: str):
         self.logger.debug("send data to symnet %s", data)
         self.transport.sendto(data.encode())
+        self.WRITTEN_DATAGRAMS.labels(**self.address_labels).inc()
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__qualname__} "
+            f"callback_queue_len={len(self.callback_queue)} "
+            f"address_labels={self.address_labels!r}>"
+        )
 
 
 @attr.s(frozen=True, slots=True)

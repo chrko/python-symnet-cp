@@ -17,7 +17,7 @@ class SymNetController:
 
         self.logger.debug("create new SymNetController with %d", controller_number)
         self.controller_number = int(controller_number)
-        self.proto = protocol
+        self.protocol = protocol
 
         self.raw_value = 0
         self.raw_value_time: float = 0
@@ -76,8 +76,8 @@ class SymNetController:
         callback_obj = SymNetRawProtocolCallback(
             callback=self._assure_callback, expected_lines=1, regex="^(ACK)|(NAK)\r$"
         )
-        self.proto.callback_queue.append(callback_obj)
-        self.proto.write(
+        self.protocol.callback_queue.append(callback_obj)
+        self.protocol.write(
             "CS {cn:d} {cv:d}\r".format(cn=self.controller_number, cv=self.raw_value)
         )
         await callback_obj.future
@@ -98,8 +98,8 @@ class SymNetController:
             expected_lines=1,
             regex=f"^{self.controller_number} ([0-9]{{1,5}})\r$",
         )
-        self.proto.callback_queue.append(callback_obj)
-        self.proto.write(f"GS2 {self.controller_number:d}\r")
+        self.protocol.callback_queue.append(callback_obj)
+        self.protocol.write(f"GS2 {self.controller_number:d}\r")
         await callback_obj.future
 
     def _retrieve_callback(self, _, m=None):
@@ -108,6 +108,16 @@ class SymNetController:
                 f"Error executing GS2 command, controller {self.controller_number}"
             )
         self._set_raw_value(int(m.group(1)))
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__qualname__} "
+            f"controller_number={self.controller_number} "
+            f"raw_value={self.raw_value} "
+            f"raw_value_time={self.raw_value_time} "
+            f"observer_count={len(self.observer)} "
+            f"protocol={self.protocol}>"
+        )
 
 
 class SymNetSelectorController(SymNetController):
@@ -122,14 +132,28 @@ class SymNetSelectorController(SymNetController):
     def position_count(self) -> int:
         return self._position_count
 
+    def _raw_to_position(self, value: int) -> int:
+        return int(round(value / 65535 * (self.position_count - 1) + 1))
+
     async def get_position(self):
         raw_value = await self.get_raw_value()
-        return int(round(raw_value / 65535 * (self.position_count - 1) + 1))
+        return self._raw_to_position(raw_value)
 
     async def set_position(self, position: int):
         assert 1 <= position <= self.position_count
         await self.set_raw_value(
             int(round((position - 1) / (self.position_count - 1) * 65535))
+        )
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__qualname__} "
+            f"controller_number={self.controller_number} "
+            f"position={self._raw_to_position(self.raw_value)} "
+            f"raw_value={self.raw_value} "
+            f"raw_value_time={self.raw_value_time} "
+            f"observer_count={len(self.observer)} "
+            f"protocol={self.protocol}>"
         )
 
 
@@ -148,3 +172,13 @@ class SymNetButtonController(SymNetController):
             await self.on()
         else:
             await self.off()
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__qualname__} "
+            f"controller_number={self.controller_number} "
+            f"raw_value={self.raw_value} "
+            f"raw_value_time={self.raw_value_time} "
+            f"observer_count={len(self.observer)} "
+            f"protocol={self.protocol}>"
+        )

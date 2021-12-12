@@ -14,11 +14,17 @@ from symnet_cp.protocol import SymNetRawControllerState
 class SymNetDevice:
     def __init__(
         self,
+        local_address: tuple[str, int],
+        remote_address: tuple[str, int],
         state_queue: asyncio.Queue,
         transport: asyncio.DatagramTransport,
         protocol: SymNetRawProtocol,
     ):
         self.logger = logging.getLogger(self.__class__.__qualname__)
+
+        self.local_address = local_address
+        self.remote_address = remote_address
+
         self._state_queue: asyncio.Queue = state_queue
 
         self.controllers: dict[int, SymNetController] = {}
@@ -45,7 +51,13 @@ class SymNetDevice:
             create_protocol, local_addr=local_address, remote_addr=remote_address
         )  # type: asyncio.DatagramTransport, SymNetRawProtocol
 
-        return cls(state_queue=state_queue, transport=transport, protocol=protocol)
+        return cls(
+            local_address=local_address,
+            remote_address=remote_address,
+            state_queue=state_queue,
+            transport=transport,
+            protocol=protocol,
+        )
 
     async def _process_push_messages(self):
         while True:
@@ -106,3 +118,14 @@ class SymNetDevice:
             pass
         self.logger.debug("SymNetDevice close transport")
         self.transport.close()
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__qualname__} "
+            f"local_address={self.local_address!r} "
+            f"remote_address={self.remote_address!r} "
+            f"controller_count={len(self.controllers)} "
+            f"transport={self.transport} "
+            f"protocol={self.protocol} "
+            f"state_queue_depth={self._state_queue.qsize()}>"
+        )
