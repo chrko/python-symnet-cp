@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "symnet-cp"
-version = "0.0.1"
+version = "0.1.0"
 description = "SymNet External Control Protocol implementation"
 authors = ["Christian Kohlstedde <christian@kohlsted.de>"]
 license = "MIT"
