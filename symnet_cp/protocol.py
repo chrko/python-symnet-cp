@@ -26,10 +26,11 @@ class SymNetRawProtocolCallback:
 
         self.future = loop.create_future()
         self.timeout = float(timeout)
-        self.timeouter_task = loop.create_task(self.timeouter())
+        self.timeout_task = loop.create_task(self.timeouter())
 
     async def timeouter(self):
         await asyncio.sleep(self.timeout)
+        self.logger.warning(f"Callback {self!r} timed out")
         self.future.set_exception(asyncio.TimeoutError())
 
     def callback(self, *args, **kwargs):
@@ -40,7 +41,17 @@ class SymNetRawProtocolCallback:
         except Exception as e:
             self.future.set_exception(e)
         finally:
-            self.timeouter_task.cancel()
+            self.timeout_task.cancel()
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__qualname__} "
+            f"callback={self._callback!r} "
+            f"expected_lines={self.expected_lines} "
+            f"regex={self.regex!r} "
+            f"timeout={self.timeout} "
+            f"timeout_task={self.timeout_task}>"
+        )
 
 
 class SymNetRawProtocol(asyncio.DatagramProtocol):
