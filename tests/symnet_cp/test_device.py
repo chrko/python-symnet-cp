@@ -130,6 +130,8 @@ async def test_device(
             with pytest.raises(asyncio.TimeoutError):
                 assert await sel.get_position() == 8
 
+            assert len(dev.protocol.callback_queue) == 0
+
             assert len(callback_args_expected) == 0
         finally:
             await dev.cleanup()
