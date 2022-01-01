@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from asyncio import CancelledError
 
 from symnet_cp.controller import (
     SymNetButtonController,
@@ -9,6 +8,8 @@ from symnet_cp.controller import (
     SymNetSelectorController,
 )
 from symnet_cp.protocol import SymNetRawControllerState
+
+logger = logging.getLogger(__name__)
 
 
 class SymNetDevice:
@@ -20,8 +21,6 @@ class SymNetDevice:
         transport: asyncio.DatagramTransport,
         protocol: SymNetRawProtocol,
     ):
-        self.logger = logging.getLogger(self.__class__.__qualname__)
-
         self.local_address = local_address
         self.remote_address = remote_address
 
@@ -39,7 +38,6 @@ class SymNetDevice:
     async def create(
         cls, local_address: tuple[str, int], remote_address: tuple[str, int]
     ) -> "SymNetDevice":
-        logger = logging.getLogger(cls.__qualname__)
         logger.debug("setup new SymNet device")
 
         state_queue = asyncio.Queue()
@@ -51,7 +49,7 @@ class SymNetDevice:
             create_protocol, local_addr=local_address, remote_addr=remote_address
         )  # type: asyncio.DatagramTransport, SymNetRawProtocol
 
-        return cls(
+        self = cls(
             local_address=local_address,
             remote_address=remote_address,
             state_queue=state_queue,
@@ -59,10 +57,12 @@ class SymNetDevice:
             protocol=protocol,
         )
 
+        return self
+
     async def _process_push_messages(self):
         while True:
             cs: SymNetRawControllerState = await self._state_queue.get()
-            self.logger.debug(
+            logger.debug(
                 "received some pushed data - handover to the controller object"
             )
             if cs.controller_number in self.controllers:
@@ -72,9 +72,7 @@ class SymNetDevice:
                 )
 
     async def define_controller(self, controller_number: int) -> SymNetController:
-        self.logger.debug(
-            "create new controller %d on SymNet device", controller_number
-        )
+        logger.debug("create new controller %d on SymNet device", controller_number)
         controller_number = int(controller_number)
         controller = SymNetController(controller_number, self.protocol)
         self.controllers[controller_number] = controller
@@ -88,7 +86,7 @@ class SymNetDevice:
         controller_number: int,
         position_count: int,
     ) -> SymNetSelectorController:
-        self.logger.debug("create new selector %d on SymNet device", controller_number)
+        logger.debug("create new selector %d on SymNet device", controller_number)
         controller_number = int(controller_number)
         controller = SymNetSelectorController(
             controller_number, position_count, self.protocol
@@ -100,7 +98,7 @@ class SymNetDevice:
         return controller
 
     async def define_button(self, controller_number: int) -> SymNetButtonController:
-        self.logger.debug("create new button %d on SymNet device", controller_number)
+        logger.debug("create new button %d on SymNet device", controller_number)
         controller_number = int(controller_number)
         controller = SymNetButtonController(controller_number, self.protocol)
         self.controllers[controller_number] = controller
@@ -110,13 +108,13 @@ class SymNetDevice:
         return controller
 
     async def cleanup(self):
-        self.logger.debug("SymNetDevice cancel process_task")
+        logger.debug("SymNetDevice cancel process_task")
         self._process_task.cancel()
         try:
             await self._process_task
-        except CancelledError:
+        except asyncio.CancelledError:
             pass
-        self.logger.debug("SymNetDevice close transport")
+        logger.debug("SymNetDevice close transport")
         self.transport.close()
 
     def __repr__(self):

@@ -8,14 +8,14 @@ from symnet_cp.protocol import SymNetRawProtocol, SymNetRawProtocolCallback
 
 UTC = ZoneInfo("UTC")
 
+logger = logging.getLogger(__name__)
+
 
 class SymNetController:
     value_timeout = 10  # in seconds
 
     def __init__(self, controller_number: int, protocol: SymNetRawProtocol):
-        self.logger = logging.getLogger(self.__class__.__qualname__)
-
-        self.logger.debug("create new SymNetController with %d", controller_number)
+        logger.debug("create new SymNetController with %d", controller_number)
         self.controller_number = int(controller_number)
         self.protocol = protocol
 
@@ -25,27 +25,25 @@ class SymNetController:
         self.observer: list[typing.Callable] = []
 
     def add_observer(self, callback: typing.Callable):
-        self.logger.debug(
+        logger.debug(
             "add a observer (%s) to controller %d", callback, self.controller_number
         )
         return self.observer.append(callback)
 
     def remove_observer(self, callback: typing.Callable):
-        self.logger.debug(
+        logger.debug(
             "remove a observer (%s) to controller %d", callback, self.controller_number
         )
         return self.observer.remove(callback)
 
     async def get_raw_value(self, force_load: bool = False) -> int:
-        self.logger.debug(
-            "retrieve current value for controller %d", self.controller_number
-        )
+        logger.debug("retrieve current value for controller %d", self.controller_number)
         if (
             force_load
             or asyncio.get_running_loop().time() - self.raw_value_time
             > self.value_timeout
         ):
-            self.logger.debug("value timeout - refresh")
+            logger.debug("value timeout - refresh")
             await self.retrieve_current_state()
         return self.raw_value
 
@@ -54,14 +52,14 @@ class SymNetController:
         await self.assure_current_state()
 
     def _set_raw_value(self, value: int):
-        self.logger.debug(
+        logger.debug(
             "set_raw_value called on %d with %d", self.controller_number, value
         )
         old_value = self.raw_value
         self.raw_value = value
         self.raw_value_time = asyncio.get_running_loop().time()
         if old_value != value:
-            self.logger.debug("value has changed - notify observers")
+            logger.debug("value has changed - notify observers")
             for clb in self.observer:
                 asyncio.create_task(
                     clb(self, old_value=old_value, new_value=value),
@@ -69,12 +67,15 @@ class SymNetController:
                 )
 
     async def assure_current_state(self):
-        self.logger.debug(
+        logger.debug(
             "assure current controller %d state to set on the symnet device",
             self.controller_number,
         )
         callback_obj = SymNetRawProtocolCallback(
-            callback=self._assure_callback, expected_lines=1, regex="^(ACK)|(NAK)\r$"
+            protocol=self.protocol,
+            callback=self._assure_callback,
+            expected_lines=1,
+            regex="^(ACK)|(NAK)\r$",
         )
         self.protocol.callback_queue.append(callback_obj)
         self.protocol.write(
@@ -89,11 +90,12 @@ class SymNetController:
             )
 
     async def retrieve_current_state(self):
-        self.logger.debug(
+        logger.debug(
             "request current value from the symnet device for controller %d",
             self.controller_number,
         )
         callback_obj = SymNetRawProtocolCallback(
+            protocol=self.protocol,
             callback=self._retrieve_callback,
             expected_lines=1,
             regex=f"^{self.controller_number} ([0-9]{{1,5}})\r$",
