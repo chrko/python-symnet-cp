@@ -171,8 +171,6 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
                 )
             )
 
-        self.RECEIVED_DATA_LINES.labels(category="error_fatal", **address_labels).inc()
-
     def error_received(self, exc):
         logger.error("Error received %s", exc)
         if isinstance(exc, ConnectionRefusedError):
