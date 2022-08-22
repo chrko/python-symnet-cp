@@ -30,9 +30,12 @@ jobs:
       - name: Show poetry debug information
         run: |
           poetry debug
-      - name: Check syntax
+      - name: Check formatting
         run: |
-          poetry run black --check .
+          poetry run black --verbose --check .
+      - name: Check style guide
+        run: |
+          poetry run flake8
       - name: Run tests
         run: |
           poetry run pytest tests/ --junitxml=junit/test-results.xml --cov=symnet_cp --cov-report=xml --cov-report=html
