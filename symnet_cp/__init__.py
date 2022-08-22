@@ -11,4 +11,3 @@ __all__ = [
     "SymNetSelectorController",
     "SymNetDevice",
 ]
-__version__ = "0.1.0"
