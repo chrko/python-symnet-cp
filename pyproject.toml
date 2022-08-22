@@ -40,4 +40,7 @@ target-version = ['py39']
 
 [tool.isort]
 profile = "black"
-skip_gitignore = "true"
+skip_gitignore = true
+
+[tool.coverage.run]
+branch = true
