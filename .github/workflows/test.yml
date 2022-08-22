@@ -27,6 +27,9 @@ jobs:
       - name: Install poetry
         run: |
           poetry install
+      - name: Show poetry debug information
+        run: |
+          poetry debug
       - name: Check syntax
         run: |
           poetry run black --check .
