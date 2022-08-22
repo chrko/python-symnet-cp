@@ -26,7 +26,21 @@ black = "^22.6.0"
 pytest-aio = "^1.4.1"
 pytest-mockservers = "^0.6.0"
 pytest-cov = "^3.0.0"
+flake8 = "^5.0.4"
+pytest-sugar = "^0.9.5"
+isort = "^5.10.1"
+pep8-naming = "^0.13.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+target-version = ['py39']
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+
+[tool.coverage.run]
+branch = true

@@ -5,4 +5,9 @@ from symnet_cp.controller import (
 )
 from symnet_cp.device import SymNetDevice
 
-__version__ = "0.1.0"
+__all__ = [
+    "SymNetController",
+    "SymNetButtonController",
+    "SymNetSelectorController",
+    "SymNetDevice",
+]
