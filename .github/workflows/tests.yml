@@ -42,3 +42,4 @@ jobs:
           poetry run pytest tests -p no:sugar --cov=symnet_cp --cov-report=xml
       - name: Upload coverage
         uses: codecov/codecov-action@v3
+        if: matrix.python-version == '3.9'
