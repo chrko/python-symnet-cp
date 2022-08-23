@@ -8,7 +8,6 @@ from symnet_cp.controller import (
 from symnet_cp.device import SymNetDevice
 
 __all__ = [
-    "__version__",
     "SymNetController",
     "SymNetButtonController",
     "SymNetSelectorController",
