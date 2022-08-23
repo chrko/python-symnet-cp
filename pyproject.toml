@@ -17,8 +17,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.9"
-attrs = "~=22.1.0"
-prometheus-client = "~=0.14.1"
+attrs = "^22.1.0"
+prometheus-client = "^0.14.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
