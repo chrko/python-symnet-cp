@@ -14,7 +14,7 @@ class UDPExpectedServer:
         host: str,
         port: int,
         expected: list[tuple[bytes, bytes]],
-        delayed_data: list[tuple[float, str]] = None,
+        delayed_data: list[tuple[float, bytes]] = None,
     ) -> None:
         self._host = host
         self._port = port
@@ -45,10 +45,10 @@ class UDPExpectedServer:
         self._transport = None
 
     @staticmethod
-    async def delayed_sender(timeout: float, data: str, protocol):
+    async def delayed_sender(timeout: float, data: bytes, protocol):
         await asyncio.sleep(timeout)
         if protocol.address:
-            protocol.transport.sendto(data.encode(), protocol.address)
+            protocol.transport.sendto(data, protocol.address)
 
     async def __aenter__(self):
         listen = asyncio.get_running_loop().create_datagram_endpoint(
@@ -90,7 +90,7 @@ async def test_device(
         (b"GS2 1\r", b"1 0\r"),
         (b"GS2 1\r", None),
     ]
-    delayed_data = [(1, "#00001=00000\r"), (3, "#00001=65535")]
+    delayed_data = [(1, b"#00001=00000\r"), (3, b"#00001=65535")]
 
     udp_server = udp_expected_factory_server(
         host=localhost, port=remote_port, expected=expected, delayed_data=delayed_data
