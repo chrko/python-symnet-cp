@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "symnet-cp"
-version = "0.2.1"
+version = "0.3.0a1"
 description = "SymNet External Control Protocol implementation"
 authors = ["Christian Kohlstedde <christian@kohlsted.de>"]
 license = "MIT"
@@ -30,6 +30,7 @@ flake8 = "^5.0.4"
 pytest-sugar = "^0.9.5"
 isort = "^5.10.1"
 pep8-naming = "^0.13.2"
+tomli = "^2.0.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
