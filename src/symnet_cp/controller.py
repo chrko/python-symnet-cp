@@ -23,6 +23,7 @@ class SymNetController:
         self.raw_value_time: float = 0
 
         self.observer: list[typing.Callable] = []
+        self._callback_tasks = set()
 
     def add_observer(self, callback: typing.Callable):
         logger.debug(
@@ -61,10 +62,12 @@ class SymNetController:
         if old_value != value:
             logger.debug("value has changed - notify observers")
             for clb in self.observer:
-                asyncio.create_task(
+                task = asyncio.create_task(
                     clb(self, old_value=old_value, new_value=value),
                     name=f"{self!r}-{datetime.now(UTC)}-callback-{clb}",
                 )
+                self._callback_tasks.add(task)
+                task.add_done_callback(self._callback_tasks.discard)
 
     async def assure_current_state(self):
         logger.debug(
