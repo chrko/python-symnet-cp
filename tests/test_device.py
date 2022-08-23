@@ -11,13 +11,14 @@ class UDPExpectedServer:
     def __init__(
         self,
         *,
-        host: str,
-        port: int,
+        server_port: int,
+        client_port: int,
         expected: list[tuple[bytes, bytes]],
         delayed_data: list[tuple[float, bytes]] = None,
     ) -> None:
-        self._host = host
-        self._port = port
+        self._host = "127.0.0.1"
+        self._server_port = server_port
+        self._client_port = client_port
 
         self._expected = expected
         self._delayed_data = delayed_data or []
@@ -44,6 +45,14 @@ class UDPExpectedServer:
         self._protocol_factory = ServerProtocol
         self._transport = None
 
+    @property
+    def client_address(self) -> tuple[str, int]:
+        return self._host, self._client_port
+
+    @property
+    def server_address(self) -> tuple[str, int]:
+        return self._host, self._server_port
+
     @staticmethod
     async def delayed_sender(timeout: float, data: bytes, protocol):
         await asyncio.sleep(timeout)
@@ -52,7 +61,7 @@ class UDPExpectedServer:
 
     async def __aenter__(self):
         listen = asyncio.get_running_loop().create_datagram_endpoint(
-            self._protocol_factory, local_addr=(self._host, self._port)
+            self._protocol_factory, local_addr=self.server_address
         )
         self._transport, protocol = await listen
         for delayed_data in self._delayed_data:
@@ -80,7 +89,6 @@ async def test_device(
     unused_udp_port_factory: typing.Callable[[], int],
     udp_expected_factory_server: typing.Type[UDPExpectedServer],
 ):
-    localhost = "127.0.0.1"
     local_port = unused_udp_port_factory()
     remote_port = unused_udp_port_factory()
 
@@ -93,13 +101,16 @@ async def test_device(
     delayed_data = [(1, b"#00001=00000\r"), (3, b"#00001=65535")]
 
     udp_server = udp_expected_factory_server(
-        host=localhost, port=remote_port, expected=expected, delayed_data=delayed_data
+        server_port=remote_port,
+        client_port=local_port,
+        expected=expected,
+        delayed_data=delayed_data,
     )
 
     async with udp_server:
         dev = await SymNetDevice.create(
-            local_address=(localhost, local_port),
-            remote_address=(localhost, remote_port),
+            local_address=udp_server.client_address,
+            remote_address=udp_server.server_address,
         )
         try:
             sel = await dev.define_selector(1, 8)
