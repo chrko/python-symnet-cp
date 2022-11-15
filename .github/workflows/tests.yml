@@ -23,7 +23,7 @@ jobs:
           poetry install
       - name: Show poetry debug information
         run: |
-          poetry debug
+          poetry debug info
       - name: Check formatting
         run: |
           poetry run black --diff --check .
