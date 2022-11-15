@@ -41,8 +41,10 @@ class SymNetRawProtocolCallback:
     async def timeouter(self):
         await asyncio.sleep(self.timeout)
         logger.warning(f"Callback {self!r} timed out")
-        self.future.set_exception(asyncio.TimeoutError())
-        self.protocol.callback_queue.remove(self)
+        try:
+            self.future.set_exception(asyncio.TimeoutError())
+        finally:
+            self.protocol.callback_queue.remove(self)
 
     def callback(self, *args, **kwargs):
         logger.debug("raw protocol callback called")
@@ -50,9 +52,15 @@ class SymNetRawProtocolCallback:
             result = self._callback(*args, **kwargs)
             self.future.set_result(result)
         except Exception as e:
-            self.future.set_exception(e)
+            try:
+                self.future.set_exception(e)
+            except Exception as e:
+                logger.error(f"Error during setting exception on future: {self!r}", e)
         finally:
-            self.timeout_task.cancel()
+            try:
+                self.timeout_task.cancel()
+            except Exception as e:
+                logger.error(f"Error canceling timout task: {self!r}", e)
 
     def __repr__(self):
         return (
@@ -60,6 +68,7 @@ class SymNetRawProtocolCallback:
             f"callback={self._callback!r} "
             f"expected_lines={self.expected_lines} "
             f"regex={self.regex!r} "
+            f"future={self.future!r} "
             f"timeout={self.timeout} "
             f"timeout_task={self.timeout_task}>"
         )
