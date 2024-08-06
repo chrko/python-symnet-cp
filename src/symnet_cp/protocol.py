@@ -55,12 +55,14 @@ class SymNetRawProtocolCallback:
             try:
                 self.future.set_exception(e)
             except Exception as e:
-                logger.error(f"Error during setting exception on future: {self!r}", e)
+                logger.error(
+                    f"Error during setting exception on future: {self!r}", exc_info=e
+                )
         finally:
             try:
                 self.timeout_task.cancel()
             except Exception as e:
-                logger.error(f"Error canceling timout task: {self!r}", e)
+                logger.error(f"Error canceling timout task: {self!r}", exc_info=e)
 
     def __repr__(self):
         return (
@@ -160,7 +162,7 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
 
         logger.debug("no callbacks defined and not an ACK or NAK - must be pushed data")
         for line in lines:
-            m = re.match("^#([0-9]{5})=(-?[0-9]{4,5})$", line)
+            m = re.match("^#(\\d{5})=(-?\\d{4,5})$", line)
             if m is None:
                 self.RECEIVED_DATA_LINES.labels(
                     category="error", **address_labels
@@ -181,7 +183,7 @@ class SymNetRawProtocol(asyncio.DatagramProtocol):
             )
 
     def error_received(self, exc):
-        logger.error("Error received %s", exc)
+        logger.error("Error received", exc_info=exc)
         if isinstance(exc, ConnectionRefusedError):
             self.callback_queue.clear()
             logger.fatal("Unable to connect to remote endpoint")
