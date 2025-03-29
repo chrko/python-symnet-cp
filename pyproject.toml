@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "symnet-cp"
-version = "0.5.0"
+version = "0.6.0"
 description = "SymNet External Control Protocol implementation"
 authors = ["Christian Kohlstedde <christian@kohlsted.de>"]
 license = "MIT"
@@ -17,23 +17,23 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
-attrs = "^24.1.0"
-prometheus-client = "^0.20.0"
+attrs = "^25.3.0"
+prometheus-client = "^0.21.1"
 
-[tool.poetry.dev-dependencies]
-pytest = "^8.3.2"
-black = "^24.8.0"
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+black = "^25.1.0"
 pytest-aio = "^1.9.0"
 pytest-mockservers = "^0.6.0"
-pytest-cov = "^5.0.0"
-flake8 = "^7.1.1"
+pytest-cov = "^6.0.0"
+flake8 = "^7.2.0"
 pytest-sugar = "^1.0.0"
-isort = "^5.10.1"
+isort = "^6.0.1"
 pep8-naming = "^0.14.1"
-tomli = "^2.0.1"
+tomli = "^2.2.1"
 
 [build-system]
-requires = ["poetry-core>=1.9.0"]
+requires = ["poetry-core>=2.1.2"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]
